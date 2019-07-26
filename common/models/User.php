@@ -24,9 +24,22 @@ use yii\web\IdentityInterface;
  */
 class User extends ActiveRecord implements IdentityInterface
 {
-    const STATUS_DELETED = 0;
-    const STATUS_INACTIVE = 9;
-    const STATUS_ACTIVE = 10;
+    /**
+     * 用户状态
+     */
+    const STATUS_DELETED = 0; //已删除
+    const STATUS_INACTIVE = 9; //未激活
+    const STATUS_ACTIVE = 10;  //正常
+    /**
+     * 用户来源
+     */
+    const USER_SOURCE_WEB = 1;
+    const USER_SOURCE_ANDIOS = 2;
+    const USER_SOURCE_IOS = 3;
+    const USER_SOURCE_SMALL = 4;
+
+    const SCENARIO_PHONE_REGISTER = "phone_register";
+
 
 
     /**
@@ -43,7 +56,18 @@ class User extends ActiveRecord implements IdentityInterface
     public function behaviors()
     {
         return [
-            TimestampBehavior::className(),
+            [
+                'class' => TimestampBehavior::className(),
+
+                'attributes' => [
+                    # 创建之前
+                    ActiveRecord::EVENT_BEFORE_INSERT => ['create_time', 'update_time'],
+                    # 修改之前
+                    ActiveRecord::EVENT_BEFORE_UPDATE => ['update_time']
+                ],
+                #设置默认值
+                'value' => time()
+            ]
         ];
     }
 
@@ -53,8 +77,35 @@ class User extends ActiveRecord implements IdentityInterface
     public function rules()
     {
         return [
-            ['status', 'default', 'value' => self::STATUS_INACTIVE],
+            [['mobile','source'],'required','on'=>self::SCENARIO_PHONE_REGISTER],
+
+            //所有场景下状态默认为激活
+
+            ['status', 'default', 'value' => self::STATUS_ACTIVE],
+
             ['status', 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_INACTIVE, self::STATUS_DELETED]],
+
+            ['username','string','max'=>50],
+
+            ['mobile','match','pattern'=>'/^((13[0-9])|(14[5,7,9])|(15[^4])|(18[0-9])|(17[0,1,3,5,6,7,8]))\\d{8}$/','message'=>'手机号格式不正确'],
+
+            ['source','in','range'=>[self::USER_SOURCE_WEB,self::USER_SOURCE_ANDIOS,self::USER_SOURCE_IOS,self::USER_SOURCE_SMALL],'message'=>'来源参数只能是1,2,3,4'],
+
+            ['password','string','max'=>20]
+        ];
+    }
+
+    /*
+     * 定义标签属性名
+     */
+    public function attributeLabels()
+    {
+        return [
+            'username' => \Yii::t('app', '用户名'),
+            'mobile' => \Yii::t('app', '手机号'),
+            'password' => \Yii::t('app', '密码'),
+            'source' => \Yii::t('app', '来源'),
+            'status' => \Yii::t('app', '用户状态'),
         ];
     }
 
@@ -84,7 +135,6 @@ class User extends ActiveRecord implements IdentityInterface
     {
         return static::findOne(['username' => $username, 'status' => self::STATUS_ACTIVE]);
     }
-
     /**
      * Finds user by password reset token
      *
@@ -132,7 +182,6 @@ class User extends ActiveRecord implements IdentityInterface
         $expire = Yii::$app->params['user.passwordResetTokenExpire'];
         return $timestamp + $expire >= time();
     }
-
     /**
      * {@inheritdoc}
      */

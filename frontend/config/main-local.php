@@ -5,6 +5,7 @@ $config = [
         'request' => [
             // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation
             'cookieValidationKey' => 'f8AfN-A_xa6bj1Qh4cH8JdgN8mkyCJlA',
+            'enableCsrfValidation' => false,
         ],
     ],
 ];
